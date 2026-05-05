@@ -87,14 +87,16 @@ class PayrollCalculationService
         }
         $nightDifferentialPay = $totalNightDiffHours * $hourlyRate * ($this->settings['night_differential_rate'] - 1);
 
-        // Allowances (unchanged)
-        $allowancesList = CustomAllowance::where('is_active', true)->get();
+        // Allowances – only added if employee worked at least one hour
         $allowances = [];
         $totalAllowances = 0;
-        foreach ($allowancesList as $a) {
-            $amount = $a->type === 'fixed' ? $a->amount : ($employee->basic_salary * $a->amount / 100);
-            $allowances[$a->name] = $amount;
-            $totalAllowances += $amount;
+        if ($totalRegularHours > 0) {
+            $allowancesList = CustomAllowance::where('is_active', true)->get();
+            foreach ($allowancesList as $a) {
+                $amount = $a->type === 'fixed' ? $a->amount : ($employee->basic_salary * $a->amount / 100);
+                $allowances[$a->name] = $amount;
+                $totalAllowances += $amount;
+            }
         }
 
         // Adjustments
@@ -224,13 +226,15 @@ class PayrollCalculationService
         }
         $nightDifferentialPay = $totalNightDiffHours * $hourlyRate * ($settings['night_differential_rate'] - 1);
 
-        // Allowances (pre‑loaded)
+        // Allowances – only added if employee worked at least one hour
         $allowancesArray = [];
         $totalAllowances = 0;
-        foreach ($allowances as $a) {
-            $amount = $a->type === 'fixed' ? $a->amount : ($employee->basic_salary * $a->amount / 100);
-            $allowancesArray[$a->name] = $amount;
-            $totalAllowances += $amount;
+        if ($totalRegularHours > 0) {
+            foreach ($allowances as $a) {
+                $amount = $a->type === 'fixed' ? $a->amount : ($employee->basic_salary * $a->amount / 100);
+                $allowancesArray[$a->name] = $amount;
+                $totalAllowances += $amount;
+            }
         }
 
         // Adjustments
