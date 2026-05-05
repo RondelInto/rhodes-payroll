@@ -49,12 +49,12 @@ WORKDIR /var/www/html
 # Copy full Laravel app
 COPY . .
 
-# ✅ Clear any cached config from previous builds (critical for env variables)
-RUN php artisan config:clear
-RUN php artisan cache:clear
-
 # Install PHP dependencies (gd extension is now available)
 RUN composer install --no-dev --optimize-autoloader --no-interaction
+
+# Clear any stale Laravel cache (now that vendor is present)
+RUN php artisan config:clear
+RUN php artisan cache:clear
 
 # Install frontend dependencies and build Vite assets
 RUN npm install
