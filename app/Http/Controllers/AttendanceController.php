@@ -27,7 +27,6 @@ class AttendanceController extends Controller
             }
         }
 
-        // Group attendance records by employee_id and date
         $attendanceData = [];
         if ($selectedPeriod) {
             $attendances = Attendance::where('period_id', $selectedPeriod)->get();
@@ -38,7 +37,6 @@ class AttendanceController extends Controller
             }
         }
 
-        // Pre‑compute for each employee
         $employeeAttendance = [];
         foreach ($employees as $employee) {
             $employeeAttendance[$employee->id] = [
@@ -50,8 +48,33 @@ class AttendanceController extends Controller
         return view('attendance.index', compact('periods', 'selectedPeriod', 'employees', 'employeeAttendance', 'period'));
     }
 
+    /**
+     * Check if the payroll period is already processed.
+     * Returns a redirect response if locked, otherwise null.
+     */
+    private function checkPeriodNotProcessed($periodId)
+    {
+        $period = PayrollPeriod::findOrFail($periodId);
+        if ($period->isProcessed()) {
+            return redirect()->back()->with('error', 'Attendance cannot be modified because the payroll period has already been processed.');
+        }
+        return null;
+    }
+
     public function store(Request $request)
     {
+        // ✅ Handle AJAX requests differently
+        $isAjax = $request->ajax() || $request->wantsJson();
+
+        // Check lock
+        $period = PayrollPeriod::find($request->period_id);
+        if ($period && $period->isProcessed()) {
+            if ($isAjax) {
+                return response()->json(['error' => 'Attendance cannot be modified because the payroll period has already been processed.'], 403);
+            }
+            return redirect()->back()->with('error', 'Attendance cannot be modified because the payroll period has already been processed.');
+        }
+
         $request->validate([
             'period_id'   => 'required|exists:payroll_periods,id',
             'employee_id' => 'required|exists:employees,id',
@@ -68,12 +91,15 @@ class AttendanceController extends Controller
         $timeOuts   = $request->time_out ?? [];
         $statuses   = $request->status ?? [];
 
-        // Fetch employee once (outside loop) to get shift_start
         $employee = Employee::find($employeeId);
         $shiftStart = $employee->shift_start ?? '09:00';
 
         if (empty($dates)) {
-            return redirect()->back()->with('error', 'No dates found for the selected period.');
+            $errorMsg = 'No dates found for the selected period.';
+            if ($isAjax) {
+                return response()->json(['error' => $errorMsg], 400);
+            }
+            return redirect()->back()->with('error', $errorMsg);
         }
 
         try {
@@ -121,8 +147,14 @@ class AttendanceController extends Controller
                 );
             }
 
+            if ($isAjax) {
+                return response()->json(['success' => true]);
+            }
             return redirect()->back()->with('success', 'Attendance saved successfully.');
         } catch (\Exception $e) {
+            if ($isAjax) {
+                return response()->json(['error' => 'Failed to save attendance: ' . $e->getMessage()], 500);
+            }
             return redirect()->back()->with('error', 'Failed to save attendance: ' . $e->getMessage());
         }
     }
@@ -134,12 +166,18 @@ class AttendanceController extends Controller
             'csv_file'  => 'required|file|mimes:csv,txt',
         ]);
 
+        $locked = $this->checkPeriodNotProcessed($request->period_id);
+        if ($locked) return $locked;
+
         Excel::import(new AttendanceImport($request->period_id), $request->file('csv_file'));
         return redirect()->back()->with('success', 'Attendance imported successfully.');
     }
 
     public function destroy(Attendance $attendance)
     {
+        $locked = $this->checkPeriodNotProcessed($attendance->period_id);
+        if ($locked) return $locked;
+
         $attendance->delete();
         return redirect()->back()->with('success', 'Attendance record deleted.');
     }

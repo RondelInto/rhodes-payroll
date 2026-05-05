@@ -1,0 +1,257 @@
+
+rhodes-payroll/
+├─ .editorconfig
+├─ .env.example
+├─ .gitattributes
+├─ .gitignore
+├─ README.md
+├─ artisan
+├─ composer.json
+├─ composer.lock
+├─ package.json
+├─ package-lock.json
+├─ phpunit.xml
+├─ postcss.config.js
+├─ repo-tree.txt
+├─ tailwind.config.js
+└─ vite.config.js
+
+app/
+├─ Console/
+│  └─ Commands/
+│     ├─ EncryptEmployeeSensitiveData.php
+│     └─ EncryptEmployeeData.php
+├─ Exports/
+│  ├─ DeductionsExport.php
+│  ├─ EmployeeEarningsExport.php
+│  └─ PayrollSummaryExport.php
+├─ Http/
+│  ├─ Controllers/
+│  │  ├─ Controller.php
+│  │  ├─ DashboardController.php
+│  │  ├─ DepartmentController.php
+│  │  ├─ EmployeeController.php
+│  │  ├─ NotificationController.php
+│  │  ├─ PayrollController.php
+│  │  ├─ PayrollPeriodController.php
+│  │  ├─ ProfileController.php
+│  │  ├─ ReportController.php
+│  │  ├─ SettingController.php
+│  │  └─ Auth/ (see below)
+│  ├─ Middleware/
+│  │  └─ RoleMiddleware.php
+│  └─ Requests/
+│     ├─ Auth/
+│     │  └─ LoginRequest.php
+│     ├─ DepartmentRequest.php
+│     ├─ EmployeeRequest.php
+│     ├─ PayrollPeriodRequest.php
+│     ├─ ProfileUpdateRequest.php
+│     └─ SettingRequest.php
+├─ Imports/
+│  └─ AttendanceImport.php
+├─ Jobs/
+│  └─ ProcessPayrollJob.php
+├─ Models/
+│  ├─ Attendance.php
+│  ├─ AuditLog.php
+│  ├─ CompanySetting.php
+│  ├─ CustomAllowance.php
+│  ├─ CustomDeduction.php
+│  ├─ Department.php
+│  ├─ Employee.php
+│  ├─ PayrollAdjustment.php
+│  ├─ PayrollPeriod.php
+│  ├─ PayrollTransaction.php
+│  └─ User.php
+├─ Notifications/
+│  ├─ NewEmployeeAccountNotification.php
+│  └─ PayrollProcessedNotification.php
+├─ Providers/
+│  └─ AppServiceProvider.php
+└─ Services/
+   └─ PayrollCalculationService.php
+
+app/Http/Controllers/Auth/
+├─ AuthenticatedSessionController.php
+├─ ConfirmablePasswordController.php
+├─ EmailVerificationNotificationController.php
+├─ EmailVerificationPromptController.php
+├─ NewPasswordController.php
+├─ PasswordController.php
+├─ PasswordResetLinkController.php
+├─ RegisteredUserController.php
+└─ VerifyEmailController.php
+
+bootstrap/
+├─ app.php
+├─ providers.php
+└─ cache/
+   └─ .gitignore
+
+config/
+├─ app.php
+├─ auth.php
+├─ cache.php
+├─ database.php
+├─ filesystems.php
+├─ logging.php
+├─ mail.php
+├─ queue.php
+├─ services.php
+└─ session.php
+
+database/
+├─ .gitignore
+├─ factories/
+│  └─ UserFactory.php
+├─ migrations/
+│  ├─ 0001_01_01_000000_create_users_table.php
+│  ├─ 0001_01_01_000001_create_cache_table.php
+│  ├─ 0001_01_01_000002_create_jobs_table.php
+│  ├─ 2026_04_14_111814_create_departments_table.php
+│  ├─ 2026_04_14_111815_create_employees_table.php
+│  ├─ 2026_04_14_111816_create_payroll_periods_table.php
+│  ├─ 2026_04_14_111817_create_attendances_table.php
+│  ├─ 2026_04_14_111817_create_payroll_transactions_table.php
+│  ├─ 2026_04_14_111818_create_company_settings_table.php
+│  ├─ 2026_04_14_111819_create_custom_deductions_table.php
+│  ├─ 2026_04_14_111820_create_custom_allowances_table.php
+│  ├─ 2026_04_14_112105_add_role_to_users_table.php
+│  ├─ 2026_04_14_122051_add_photo_to_employees_table.php
+│  ├─ 2026_04_15_055711_make_address_fields_nullable_in_employees_table.php
+│  ├─ 2026_04_15_070206_add_budget_and_manager_to_departments_table.php
+│  ├─ 2026_04_15_072742_add_soft_deletes_to_employees_table.php
+│  ├─ 2026_04_15_072743_add_soft_deletes_to_departments_table.php
+│  ├─ 2026_04_15_075703_change_employee_sensitive_fields_to_text.php
+│  ├─ 2026_04_15_111941_create_audit_logs_table.php
+│  ├─ 2026_04_15_113443_add_budget_and_manager_to_departments_table.php
+│  ├─ 2026_04_15_142610_create_notifications_table.php
+│  ├─ 2026_04_16_111638_add_shift_start_to_employees_table.php
+│  ├─ 2026_04_21_095243_create_payroll_adjustments_table.php
+│  ├─ 2026_04_21_105229_add_bank_fields_to_employees_table.php
+│  └─ 2026_04_21_114719_make_date_of_birth_and_hire_date_nullable_in_employees_table.php
+└─ seeders/
+   └─ DatabaseSeeder.php
+
+public/
+├─ index.php
+├─ robots.txt
+├─ favicon.ico
+├─ .htaccess
+└─ build/
+
+resources/
+├─ css/
+│  └─ app.css
+├─ js/
+│  ├─ bootstrap.js
+│  └─ app.js
+└─ views/
+   ├─ welcome.blade.php
+   ├─ auth/
+   │  ├─ login.blade.php
+   │  ├─ register.blade.php
+   │  ├─ forgot-password.blade.php
+   │  ├─ reset-password.blade.php
+   │  ├─ verify-email.blade.php
+   │  └─ confirm-password.blade.php
+   ├─ components/
+   │  ├─ application-logo.blade.php
+   │  ├─ auth-session-status.blade.php
+   │  ├─ danger-button.blade.php
+   │  ├─ dropdown.blade.php
+   │  ├─ dropdown-link.blade.php
+   │  ├─ input-error.blade.php
+   │  ├─ input-label.blade.php
+   │  ├─ modal.blade.php
+   │  ├─ nav-link.blade.php
+   │  ├─ primary-button.blade.php
+   │  ├─ responsive-nav-link.blade.php
+   │  ├─ secondary-button.blade.php
+   │  ├─ stat-card.blade.php
+   │  ├─ table.blade.php
+   │  └─ text-input.blade.php
+   ├─ dashboard.blade.php
+   ├─ departments/
+   │  └─ index.blade.php
+   ├─ attendance/
+   │  └─ index.blade.php
+   ├─ employees/
+   │  ├─ index.blade.php
+   │  ├─ my-attendance.blade.php
+   │  ├─ my-payslips.blade.php
+   │  └─ my-profile.blade.php
+   ├─ periods/
+   │  ├─ calendar.blade.php
+   │  └─ index.blade.php
+   ├─ payroll/
+   │  ├─ index.blade.php
+   │  ├─ payslip.blade.php
+   │  ├─ payslip-printable.blade.php
+   │  └─ payslip-pdf.blade.php
+   ├─ profile/
+   │  ├─ edit.blade.php
+   │  └─ partials/
+   │     ├─ delete-user-form.blade.php
+   │     ├─ update-password-form.blade.php
+   │     └─ update-profile-information-form.blade.php
+   ├─ reports/
+   │  └─ index.blade.php
+   ├─ settings/
+   │  └─ index.blade.php
+   ├─ notifications/
+   │  └─ index.blade.php
+   ├─ audit-logs/
+   │  └─ index.blade.php
+   ├─ errors/
+   │  └─ 404.blade.php
+   └─ layouts/
+      ├─ app.blade.php
+      ├─ guest.blade.php
+      └─ navigation.blade.php
+
+routes/
+├─ web.php
+├─ console.php
+└─ auth.php
+
+storage/
+├─ app/
+│  ├─ .gitignore
+│  ├─ public/
+│  │  └─ .gitignore
+│  └─ private/
+│     └─ .gitignore
+├─ framework/
+│  ├─ .gitignore
+│  ├─ cache/
+│  │  ├─ .gitignore
+│  │  └─ data/
+│  │     └─ .gitignore
+│  ├─ views/
+│  │  └─ .gitignore
+│  ├─ sessions/
+│  │  └─ .gitignore
+│  └─ testing/
+│     └─ .gitignore
+└─ logs/
+   └─ .gitignore
+
+tests/
+├─ TestCase.php
+├─ Feature/
+│  ├─ Auth/
+│  │  ├─ AuthenticationTest.php
+│  │  ├─ EmailVerificationTest.php
+│  │  ├─ PasswordConfirmationTest.php
+│  │  ├─ PasswordResetTest.php
+│  │  ├─ PasswordUpdateTest.php
+│  │  └─ RegistrationTest.php
+│  ├─ ExampleTest.php
+│  └─ ProfileTest.php
+└─ Unit/
+   └─ ExampleTest.php
+
+vendor/  (installed dependencies - not expanded)
+

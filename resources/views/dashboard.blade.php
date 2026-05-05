@@ -22,7 +22,7 @@
             <div class="grid grid-cols-1 lg:grid-cols-2 gap-6">
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <h3 class="text-base font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                             <i class="fas fa-chart-bar text-blue-500"></i> Employee Distribution by Department
                         </h3>
                     </div>
@@ -33,21 +33,48 @@
 
                 <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 overflow-hidden">
                     <div class="px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                        <h3 class="text-base font-semibold text-gray-900 dark:text-white flex items-center gap-2">
+                        <h3 class="text-base font-semibold text-gray-800 dark:text-white flex items-center gap-2">
                             <i class="fas fa-receipt text-blue-500"></i> Recent Payroll Transactions
                         </h3>
                     </div>
                     <div class="overflow-x-auto">
                         <table class="min-w-full divide-y divide-gray-200 dark:divide-gray-700">
                             <thead class="bg-gray-50 dark:bg-gray-800/80">
-                                <tr><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Net Pay</th><th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th></tr>
+                                <tr>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Employee</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Period</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Net Pay</th>
+                                    <th class="px-6 py-3 text-left text-xs font-medium text-gray-500 uppercase">Date</th>
+                                </tr>
                             </thead>
                             <tbody>
-                                @forelse($recentTransactions as $t)
-                                <tr><td class="px-6 py-3"><div class="flex items-center gap-2"><div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs">{{ substr($t->employee->first_name,0,1) }}</div><span class="text-gray-900 dark:text-white">{{ $t->employee->full_name }}</span></div></td><td class="px-6 py-3 text-gray-900 dark:text-white">{{ $t->period->name }}</td><td class="px-6 py-3 font-semibold text-emerald-600">₱{{ number_format($t->net_pay,2) }}</td><td class="px-6 py-3 text-gray-900 dark:text-white">{{ $t->created_at->format('M d, Y') }}</td></tr>
-                                @empty
-                                <tr><td colspan="4" class="px-6 py-12 text-center text-gray-500">No transactions found</td></tr>
-                                @endforelse
+                                @php $hasValidTransactions = false; @endphp
+                                @foreach($recentTransactions as $t)
+                                    @if($t->employee)
+                                        @php $hasValidTransactions = true; @endphp
+                                        <tr class="hover:bg-gray-50 dark:hover:bg-gray-700/50 transition-colors">
+                                            <td class="px-6 py-3 whitespace-nowrap">
+                                                <div class="flex items-center gap-2">
+                                                    <div class="w-8 h-8 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-xs font-bold shadow-sm">
+                                                        {{ substr($t->employee->first_name, 0, 1) }}{{ substr($t->employee->last_name, 0, 1) }}
+                                                    </div>
+                                                    <span class="text-sm font-medium text-gray-800 dark:text-gray-200">{{ $t->employee->full_name }}</span>
+                                                </div>
+                                            </td>
+                                            <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-600 dark:text-gray-400">{{ $t->period->name }}</td>
+                                            <td class="px-6 py-3 whitespace-nowrap text-sm font-semibold text-emerald-600 dark:text-emerald-400">₱{{ number_format($t->net_pay, 2) }}</td>
+                                            <td class="px-6 py-3 whitespace-nowrap text-sm text-gray-500 dark:text-gray-400">{{ $t->created_at->format('M d, Y') }}</td>
+                                        </tr>
+                                    @endif
+                                @endforeach
+                                @if(!$hasValidTransactions)
+                                    <tr>
+                                        <td colspan="4" class="px-6 py-12 text-center text-gray-500 dark:text-gray-400">
+                                            <i class="fas fa-inbox text-3xl mb-2 block"></i>
+                                            <p>No transactions found</p>
+                                        </td>
+                                    </tr>
+                                @endif
                             </tbody>
                         </table>
                     </div>
@@ -55,6 +82,7 @@
             </div>
         </div>
 
+        @push('scripts')
         <script>
             document.addEventListener('DOMContentLoaded', function() {
                 const ctx = document.getElementById('departmentChart').getContext('2d');
@@ -71,17 +99,14 @@
                             borderRadius: 6,
                         }]
                     },
-                    options: {
-                        responsive: true,
-                        plugins: { legend: { position: 'top' } },
-                        scales: { y: { beginAtZero: true } }
-                    }
+                    options: { responsive: true, plugins: { legend: { position: 'top' } }, scales: { y: { beginAtZero: true } } }
                 });
             });
         </script>
+        @endpush
 
     @else
-        {{-- Regular User Dashboard (simple welcome) --}}
+        {{-- Regular User Dashboard --}}
         <div class="space-y-6">
             <div class="bg-gradient-to-r from-emerald-600 to-teal-700 rounded-xl shadow-md p-6 text-white">
                 <div class="flex justify-between items-center">

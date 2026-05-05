@@ -6,6 +6,7 @@ use App\Models\PayrollPeriod;
 use App\Models\Employee;
 use App\Models\PayrollTransaction;
 use App\Models\CompanySetting;
+use App\Models\PayrollAdjustment;
 use App\Services\PayrollCalculationService;
 use App\Jobs\ProcessPayrollJob;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -33,9 +34,7 @@ class PayrollController extends Controller
             return back()->with('error', 'Payroll period is already processed');
         }
 
-        // Dispatch the job to the queue
         ProcessPayrollJob::dispatch($period, auth()->id());
-
         return back()->with('success', 'Payroll processing has been queued. You will be notified when complete.');
     }
 
@@ -48,21 +47,18 @@ class PayrollController extends Controller
         return view('payroll.show', compact('period', 'transactions'));
     }
 
-    // Returns HTML for modal payslip (used by AJAX)
     public function payslipHtml(PayrollTransaction $transaction)
     {
         $company = CompanySetting::pluck('value', 'key')->toArray();
         return view('payroll.payslip-printable', compact('transaction', 'company'));
     }
 
-    // Returns printable HTML (full page)
     public function payslip(PayrollTransaction $transaction)
     {
         $company = CompanySetting::pluck('value', 'key')->toArray();
         return view('payroll.payslip-printable', compact('transaction', 'company'));
     }
 
-    // Download PDF
     public function downloadPayslip(PayrollTransaction $transaction)
     {
         $company = CompanySetting::pluck('value', 'key')->toArray();
@@ -70,7 +66,6 @@ class PayrollController extends Controller
         return $pdf->download("payslip-{$transaction->employee->employee_id}-{$transaction->period->name}.pdf");
     }
 
-    // Regenerate a single transaction (only for draft periods)
     public function regenerate(PayrollTransaction $transaction)
     {
         $period = $transaction->period;
@@ -80,5 +75,40 @@ class PayrollController extends Controller
         $calculation = $this->payrollService->calculateEmployeePayroll($transaction->employee, $period);
         $transaction->update($calculation);
         return back()->with('success', 'Transaction regenerated');
+    }
+
+    // ==================== One‑off Adjustments ====================
+    public function storeAdjustment(Request $request)
+    {
+        $request->validate([
+            'employee_id' => 'required|exists:employees,id',
+            'period_id'   => 'required|exists:payroll_periods,id',
+            'type'        => 'required|in:bonus,deduction',
+            'amount'      => 'required|numeric|min:0',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        PayrollAdjustment::create($request->all());
+
+        return back()->with('success', 'Adjustment added.');
+    }
+
+    public function updateAdjustment(Request $request, PayrollAdjustment $adjustment)
+    {
+        $request->validate([
+            'type'        => 'required|in:bonus,deduction',
+            'amount'      => 'required|numeric|min:0',
+            'description' => 'nullable|string|max:255',
+        ]);
+
+        $adjustment->update($request->only(['type', 'amount', 'description']));
+
+        return back()->with('success', 'Adjustment updated.');
+    }
+
+    public function destroyAdjustment(PayrollAdjustment $adjustment)
+    {
+        $adjustment->delete();
+        return back()->with('success', 'Adjustment deleted.');
     }
 }

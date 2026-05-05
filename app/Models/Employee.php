@@ -18,13 +18,14 @@ class Employee extends Model
         'date_of_birth', 'gender', 'address', 'city', 'province', 'zip_code',
         'hire_date', 'department_id', 'position', 'employment_type', 'basic_salary',
         'sss_number', 'philhealth_number', 'pagibig_number', 'tin_number', 'status', 'photo',
-        'shift_start', // new field
+        'shift_start',
+        'bank_account',   // new
+        'bank_code',      // new
     ];
 
     protected $casts = [
         'date_of_birth' => 'date',
         'hire_date' => 'date',
-        // 'basic_salary' => 'decimal:2'   // REMOVED – encryption handles this
     ];
 
     protected $dates = ['deleted_at'];
@@ -151,6 +152,11 @@ class Employee extends Model
     public function payrollTransactions(): HasMany
     {
         return $this->hasMany(PayrollTransaction::class);
+    }
+
+    public function payrollAdjustments(): HasMany
+    {
+        return $this->hasMany(PayrollAdjustment::class);
     }
 
     public function getFullNameAttribute(): string

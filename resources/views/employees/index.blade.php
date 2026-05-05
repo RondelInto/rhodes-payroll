@@ -72,9 +72,7 @@
                             <td class="px-6 py-4 text-xs font-mono text-gray-900 dark:text-white">{{ $emp->employee_id }}</td>
                             <td class="px-6 py-4">
                                 @if($emp->photo)
-                                    <img src="{{ Storage::url($emp->photo) }}" 
-                                         class="w-9 h-9 rounded-lg object-cover border border-gray-200"
-                                         onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%239ca3af\' stroke-width=\'1\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\'/%3E%3Ccircle cx=\'12\' cy=\'7\' r=\'4\'/%3E%3C/svg%3E';">
+                                    <img src="{{ Storage::url($emp->photo) }}" class="w-9 h-9 rounded-lg object-cover border border-gray-200" onerror="this.onerror=null; this.src='data:image/svg+xml,%3Csvg xmlns=\'http://www.w3.org/2000/svg\' width=\'36\' height=\'36\' viewBox=\'0 0 24 24\' fill=\'none\' stroke=\'%239ca3af\' stroke-width=\'1\' stroke-linecap=\'round\' stroke-linejoin=\'round\'%3E%3Cpath d=\'M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2\'/%3E%3Ccircle cx=\'12\' cy=\'7\' r=\'4\'/%3E%3C/svg%3E';">
                                 @else
                                     <div class="w-9 h-9 rounded-lg bg-gradient-to-br from-blue-500 to-indigo-600 flex items-center justify-center text-white text-sm font-bold">
                                         {{ substr($emp->first_name,0,1) }}{{ substr($emp->last_name,0,1) }}
@@ -120,7 +118,7 @@
                         </tr>
                         @endforelse
                     </tbody>
-                </table>
+                </tr>
             </div>
             <div class="px-6 py-4 border-t border-gray-200 dark:border-gray-700">
                 {{ $employees->links() }}
@@ -177,9 +175,11 @@
                         <div><label class="input-label">PhilHealth</label><input type="text" name="philhealth_number" id="philhealth_number" class="input-field"></div>
                         <div><label class="input-label">Pag-IBIG</label><input type="text" name="pagibig_number" id="pagibig_number" class="input-field"></div>
                         <div><label class="input-label">TIN</label><input type="text" name="tin_number" id="tin_number" class="input-field"></div>
+                        <div><label class="input-label">Bank Account Number</label><input type="text" name="bank_account" id="bank_account" class="input-field"></div>
+                        <div><label class="input-label">Bank Code</label><input type="text" name="bank_code" id="bank_code" class="input-field"></div>
+                        <div><label class="input-label">Photo</label><input type="file" name="photo" accept="image/*" id="photoInput" class="input-field"><div id="photoPreview" class="mt-2 hidden"><img id="previewImg" class="w-16 h-16 rounded-lg object-cover border"></div></div>
                         <div><label class="input-label">Status</label><select name="status" id="status" class="input-field"><option value="active">Active</option><option value="inactive">Inactive</option></select></div>
                         <div><label class="input-label">Shift Start (24h format)</label><input type="time" name="shift_start" id="shift_start" class="input-field" value="09:00"></div>
-                        <div><label class="input-label">Photo</label><input type="file" name="photo" accept="image/*" id="photoInput" class="input-field"><div id="photoPreview" class="mt-2 hidden"><img id="previewImg" class="w-16 h-16 rounded-lg object-cover border"></div></div>
                     </div>
                 </div>
                 <div class="flex justify-end space-x-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
@@ -193,14 +193,17 @@
     <script>
         const storeUrl = "{{ route('employees.store') }}";
 
-        function openEmployeeModal() {
-            document.getElementById('employeeForm').reset();
-            document.getElementById('employeeForm').action = storeUrl;
-            document.getElementById('methodField').value = 'POST';
-            document.getElementById('modalTitle').innerText = 'Add Employee';
-            document.getElementById('photoPreview').classList.add('hidden');
-            const errorDiv = document.querySelector('#employeeForm .bg-red-50');
-            if (errorDiv) errorDiv.remove();
+        function openEmployeeModal(isEditing = false) {
+            if (!isEditing) {
+                // Reset only when adding a new employee
+                document.getElementById('employeeForm').reset();
+                document.getElementById('employeeForm').action = storeUrl;
+                document.getElementById('methodField').value = 'POST';
+                document.getElementById('modalTitle').innerText = 'Add Employee';
+                document.getElementById('photoPreview').classList.add('hidden');
+                const errorDiv = document.querySelector('#employeeForm .bg-red-50');
+                if (errorDiv) errorDiv.remove();
+            }
             document.getElementById('employeeModal').classList.remove('hidden');
             document.getElementById('employeeModal').classList.add('flex');
         }
@@ -214,21 +217,26 @@
             fetch(`/employees/${id}/edit`)
                 .then(response => response.json())
                 .then(data => {
+                    // Populate form fields
                     for (let key in data) {
-                        if (document.getElementById(key)) {
-                            document.getElementById(key).value = data[key];
+                        const element = document.getElementById(key);
+                        if (element) {
+                            element.value = data[key];
                         }
                     }
+                    // Set form action and method for update
                     document.getElementById('employeeForm').action = `/employees/${id}`;
                     document.getElementById('methodField').value = 'PUT';
                     document.getElementById('modalTitle').innerText = 'Edit Employee';
+                    // Handle photo preview
                     if (data.photo) {
                         document.getElementById('previewImg').src = '/storage/' + data.photo;
                         document.getElementById('photoPreview').classList.remove('hidden');
                     } else {
                         document.getElementById('photoPreview').classList.add('hidden');
                     }
-                    openEmployeeModal();
+                    // Open modal without resetting
+                    openEmployeeModal(true);
                 })
                 .catch(error => console.error('Error fetching employee:', error));
         }

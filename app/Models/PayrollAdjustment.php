@@ -5,20 +5,12 @@ namespace App\Models;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
-class Attendance extends Model
+class PayrollAdjustment extends Model
 {
-    protected $table = 'attendances';
-
-    protected $fillable = [
-        'employee_id', 'period_id', 'date', 'time_in', 'time_out',
-        'hours_worked', 'late_hours', 'overtime_hours', 'status'
-    ];
+    protected $fillable = ['employee_id', 'period_id', 'type', 'amount', 'description'];
 
     protected $casts = [
-        'date' => 'date',
-        'hours_worked' => 'decimal:2',
-        'late_hours' => 'decimal:2',
-        'overtime_hours' => 'decimal:2'
+        'amount' => 'decimal:2',
     ];
 
     public function employee(): BelongsTo

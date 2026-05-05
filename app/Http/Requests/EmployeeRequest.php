@@ -35,6 +35,8 @@ class EmployeeRequest extends FormRequest
             'philhealth_number' => 'nullable|string',
             'pagibig_number'   => 'nullable|string',
             'tin_number'       => 'nullable|string',
+            'bank_account'     => 'nullable|string|max:50',
+            'bank_code'        => 'nullable|string|max:20',
             'photo'            => 'nullable|image|mimes:jpeg,png,jpg|max:2048',
             'status'           => 'required|in:active,inactive',
             'shift_start'      => 'nullable|date_format:H:i',

@@ -8,6 +8,7 @@ use App\Models\Attendance;
 use App\Models\CustomDeduction;
 use App\Models\CustomAllowance;
 use App\Models\CompanySetting;
+use App\Models\PayrollAdjustment;
 use Carbon\Carbon;
 
 class PayrollCalculationService
@@ -25,6 +26,10 @@ class PayrollCalculationService
         ];
     }
 
+    /**
+     * Original method – kept for compatibility (still runs many queries).
+     * Now uses hourly-based pay.
+     */
     public function calculateEmployeePayroll(Employee $employee, PayrollPeriod $period)
     {
         $attendances = Attendance::where('employee_id', $employee->id)
@@ -32,51 +37,57 @@ class PayrollCalculationService
             ->get();
 
         $totalWorkingDays = $this->getWorkingDays($period);
-        $dailyRate = $employee->basic_salary / max($totalWorkingDays, 1);
-        $daysPresent = $attendances->whereIn('status', ['present', 'late', 'half-day'])->count();
-
-        // ==================== GUARD: No attendance days → zero pay, zero deductions ====================
-        if ($daysPresent == 0) {
-            return [
-                'basic_pay' => 0,
-                'overtime_pay' => 0,
-                'holiday_pay' => 0,
-                'allowances' => [],
-                'gross_pay' => 0,
-                'sss_contribution' => 0,
-                'philhealth_contribution' => 0,
-                'pagibig_contribution' => 0,
-                'withholding_tax' => 0,
-                'other_deductions' => [],
-                'total_deductions' => 0,
-                'net_pay' => 0,
-            ];
+        if ($totalWorkingDays == 0) {
+            return $this->zeroPayrollArray();
         }
 
-        $basicPay = $daysPresent * $dailyRate;
+        $workingHoursPerDay = $this->settings['working_hours_per_day'];
+        $hourlyRate = $employee->basic_salary / ($totalWorkingDays * $workingHoursPerDay);
 
-        // Late deductions
+        // Calculate total regular hours (capped at 8 per day) and overtime hours
+        $totalRegularHours = 0;
+        $totalOvertimeHours = 0;
+        foreach ($attendances as $att) {
+            $hours = $att->hours_worked;
+            if ($hours <= 0) continue;
+            if ($hours > $workingHoursPerDay) {
+                $totalRegularHours += $workingHoursPerDay;
+                $totalOvertimeHours += ($hours - $workingHoursPerDay);
+            } else {
+                $totalRegularHours += $hours;
+            }
+        }
+
+        // Basic pay = regular hours * hourly rate
+        $basicPay = $totalRegularHours * $hourlyRate;
+
+        // Late deductions (optional – based on late hours)
         $totalLateHours = $attendances->sum('late_hours');
         $lateDeduction = $totalLateHours * $this->settings['late_deduction_per_hour'];
         $basicPay = max(0, $basicPay - $lateDeduction);
 
-        // Overtime
-        $totalOvertimeHours = $attendances->sum('overtime_hours');
-        $hourlyRate = $employee->basic_salary / ($totalWorkingDays * $this->settings['working_hours_per_day']);
+        // Overtime pay
         $overtimePay = $totalOvertimeHours * $hourlyRate * $this->settings['overtime_rate'];
 
-        // Holiday pay
-        $holidayCount = $attendances->where('status', 'holiday')->count();
-        $holidayPay = $holidayCount * $dailyRate * $this->settings['holiday_rate'];
+        // Holiday pay: total holiday hours * hourly rate * holiday multiplier
+        $holidayHours = 0;
+        foreach ($attendances as $att) {
+            if ($att->status == 'holiday') {
+                $holidayHours += $att->hours_worked;
+            }
+        }
+        $holidayPay = $holidayHours * $hourlyRate * $this->settings['holiday_rate'];
 
-        // Night differential
+        // Night differential (unchanged)
         $totalNightDiffHours = 0;
         foreach ($attendances as $att) {
-            $totalNightDiffHours += $this->calculateNightDiffHours($att->time_in, $att->time_out);
+            if ($att->time_in && $att->time_out) {
+                $totalNightDiffHours += $this->calculateNightDiffHours($att->time_in, $att->time_out);
+            }
         }
         $nightDifferentialPay = $totalNightDiffHours * $hourlyRate * ($this->settings['night_differential_rate'] - 1);
 
-        // Allowances
+        // Allowances (unchanged)
         $allowancesList = CustomAllowance::where('is_active', true)->get();
         $allowances = [];
         $totalAllowances = 0;
@@ -86,9 +97,16 @@ class PayrollCalculationService
             $totalAllowances += $amount;
         }
 
-        $grossPay = $basicPay + $overtimePay + $holidayPay + $nightDifferentialPay + $totalAllowances;
+        // Adjustments
+        $adjustments = PayrollAdjustment::where('employee_id', $employee->id)
+                        ->where('period_id', $period->id)
+                        ->get();
+        $totalBonuses = $adjustments->where('type', 'bonus')->sum('amount');
+        $totalDeductionsAdj = $adjustments->where('type', 'deduction')->sum('amount');
 
-        // Statutory contributions (based on full monthly salary – you may later pro‑rate)
+        $grossPay = $basicPay + $overtimePay + $holidayPay + $nightDifferentialPay + $totalAllowances + $totalBonuses;
+
+        // Statutory contributions (unchanged)
         $sss = $this->computeSSS($employee->basic_salary);
         $philhealth = $this->computePhilHealth($employee->basic_salary);
         $pagibig = $this->computePagIBIG($employee->basic_salary);
@@ -96,7 +114,7 @@ class PayrollCalculationService
         $taxableIncome = $grossPay - $sss - $philhealth - $pagibig;
         $withholdingTax = $this->computeTax($taxableIncome);
 
-        // Custom deductions
+        // Custom deductions (unchanged)
         $deductionsList = CustomDeduction::where('is_active', true)->get();
         $otherDeductions = [];
         $totalOther = 0;
@@ -106,10 +124,9 @@ class PayrollCalculationService
             $totalOther += $amount;
         }
 
-        $totalDeductions = $sss + $philhealth + $pagibig + $withholdingTax + $totalOther;
+        $totalDeductions = $sss + $philhealth + $pagibig + $withholdingTax + $totalOther + $totalDeductionsAdj;
         $netPay = $grossPay - $totalDeductions;
 
-        // ==================== SAFETY: If net pay is negative, zero out deductions ====================
         if ($netPay < 0) {
             return [
                 'basic_pay' => round($basicPay, 2),
@@ -144,31 +161,177 @@ class PayrollCalculationService
     }
 
     /**
+     * OPTIMIZED METHOD: Accepts pre‑loaded data (no extra database queries).
+     * Now uses hourly-based pay.
+     */
+    public function calculateEmployeePayrollWithData(
+        Employee $employee,
+        PayrollPeriod $period,
+        $attendances,
+        $adjustments,
+        $allowances,
+        $deductions,
+        array $settings
+    ) {
+        $totalWorkingDays = $this->getWorkingDays($period);
+        if ($totalWorkingDays == 0) {
+            return $this->zeroPayrollArray();
+        }
+
+        $workingHoursPerDay = $settings['working_hours_per_day'];
+        $hourlyRate = $employee->basic_salary / ($totalWorkingDays * $workingHoursPerDay);
+
+        // Calculate total regular hours (capped at 8 per day) and overtime hours
+        $totalRegularHours = 0;
+        $totalOvertimeHours = 0;
+        foreach ($attendances as $att) {
+            $hours = $att->hours_worked;
+            if ($hours <= 0) continue;
+            if ($hours > $workingHoursPerDay) {
+                $totalRegularHours += $workingHoursPerDay;
+                $totalOvertimeHours += ($hours - $workingHoursPerDay);
+            } else {
+                $totalRegularHours += $hours;
+            }
+        }
+
+        // Basic pay = regular hours * hourly rate
+        $basicPay = $totalRegularHours * $hourlyRate;
+
+        // Late deductions (optional)
+        $totalLateHours = $attendances->sum('late_hours');
+        $lateDeduction = $totalLateHours * $settings['late_deduction_per_hour'];
+        $basicPay = max(0, $basicPay - $lateDeduction);
+
+        // Overtime pay
+        $overtimePay = $totalOvertimeHours * $hourlyRate * $settings['overtime_rate'];
+
+        // Holiday pay: total holiday hours * hourly rate * holiday multiplier
+        $holidayHours = 0;
+        foreach ($attendances as $att) {
+            if ($att->status == 'holiday') {
+                $holidayHours += $att->hours_worked;
+            }
+        }
+        $holidayPay = $holidayHours * $hourlyRate * $settings['holiday_rate'];
+
+        // Night differential
+        $totalNightDiffHours = 0;
+        foreach ($attendances as $att) {
+            if ($att->time_in && $att->time_out) {
+                $totalNightDiffHours += $this->calculateNightDiffHours($att->time_in, $att->time_out);
+            }
+        }
+        $nightDifferentialPay = $totalNightDiffHours * $hourlyRate * ($settings['night_differential_rate'] - 1);
+
+        // Allowances (pre‑loaded)
+        $allowancesArray = [];
+        $totalAllowances = 0;
+        foreach ($allowances as $a) {
+            $amount = $a->type === 'fixed' ? $a->amount : ($employee->basic_salary * $a->amount / 100);
+            $allowancesArray[$a->name] = $amount;
+            $totalAllowances += $amount;
+        }
+
+        // Adjustments
+        $totalBonuses = $adjustments->where('type', 'bonus')->sum('amount');
+        $totalDeductionsAdj = $adjustments->where('type', 'deduction')->sum('amount');
+
+        $grossPay = $basicPay + $overtimePay + $holidayPay + $nightDifferentialPay + $totalAllowances + $totalBonuses;
+
+        // Statutory contributions
+        $sss = $this->computeSSS($employee->basic_salary);
+        $philhealth = $this->computePhilHealth($employee->basic_salary);
+        $pagibig = $this->computePagIBIG($employee->basic_salary);
+
+        $taxableIncome = $grossPay - $sss - $philhealth - $pagibig;
+        $withholdingTax = $this->computeTax($taxableIncome);
+
+        // Custom deductions
+        $otherDeductions = [];
+        $totalOther = 0;
+        foreach ($deductions as $d) {
+            $amount = $d->type === 'fixed' ? $d->amount : ($employee->basic_salary * $d->amount / 100);
+            $otherDeductions[$d->name] = $amount;
+            $totalOther += $amount;
+        }
+
+        $totalDeductions = $sss + $philhealth + $pagibig + $withholdingTax + $totalOther + $totalDeductionsAdj;
+        $netPay = $grossPay - $totalDeductions;
+
+        if ($netPay < 0) {
+            return [
+                'basic_pay' => round($basicPay, 2),
+                'overtime_pay' => round($overtimePay, 2),
+                'holiday_pay' => round($holidayPay, 2),
+                'allowances' => $allowancesArray,
+                'gross_pay' => round($grossPay, 2),
+                'sss_contribution' => 0,
+                'philhealth_contribution' => 0,
+                'pagibig_contribution' => 0,
+                'withholding_tax' => 0,
+                'other_deductions' => [],
+                'total_deductions' => 0,
+                'net_pay' => round($grossPay, 2),
+            ];
+        }
+
+        return [
+            'basic_pay' => round($basicPay, 2),
+            'overtime_pay' => round($overtimePay, 2),
+            'holiday_pay' => round($holidayPay, 2),
+            'allowances' => $allowancesArray,
+            'gross_pay' => round($grossPay, 2),
+            'sss_contribution' => round($sss, 2),
+            'philhealth_contribution' => round($philhealth, 2),
+            'pagibig_contribution' => round($pagibig, 2),
+            'withholding_tax' => round($withholdingTax, 2),
+            'other_deductions' => $otherDeductions,
+            'total_deductions' => round($totalDeductions, 2),
+            'net_pay' => round($netPay, 2),
+        ];
+    }
+
+    /**
+     * Helper to return zero payroll array (no pay, no deductions).
+     */
+    private function zeroPayrollArray()
+    {
+        return [
+            'basic_pay' => 0,
+            'overtime_pay' => 0,
+            'holiday_pay' => 0,
+            'allowances' => [],
+            'gross_pay' => 0,
+            'sss_contribution' => 0,
+            'philhealth_contribution' => 0,
+            'pagibig_contribution' => 0,
+            'withholding_tax' => 0,
+            'other_deductions' => [],
+            'total_deductions' => 0,
+            'net_pay' => 0,
+        ];
+    }
+
+    /**
      * Calculate night differential hours for a given shift (10 PM - 6 AM)
      */
     private function calculateNightDiffHours($timeIn, $timeOut)
     {
-        if (!$timeIn || !$timeOut) {
-            return 0;
-        }
+        if (!$timeIn || !$timeOut) return 0;
 
         $start = Carbon::parse($timeIn);
         $end = Carbon::parse($timeOut);
-        
-        if ($end->lt($start)) {
-            $end->addDay();
-        }
-        
+        if ($end->lt($start)) $end->addDay();
+
         $nightStart = (clone $start)->setTime(22, 0);
         $nightEnd   = (clone $start)->setTime(6, 0)->addDay();
-        
-        if ($end->lte($nightStart) || $start->gte($nightEnd)) {
-            return 0;
-        }
-        
+
+        if ($end->lte($nightStart) || $start->gte($nightEnd)) return 0;
+
         $overlapStart = $start->max($nightStart);
         $overlapEnd   = $end->min($nightEnd);
-        
+
         return round($overlapStart->diffInHours($overlapEnd, true), 2);
     }
 

@@ -21,6 +21,12 @@ Route::middleware(['auth'])->group(function () {
     Route::get('/my-attendance', [EmployeeController::class, 'myAttendance'])->name('my.attendance');
     Route::get('/my-profile', [EmployeeController::class, 'myProfile'])->name('my.profile');
     Route::put('/my-profile', [EmployeeController::class, 'updateProfile'])->name('my.profile.update');
+    Route::put('/my-profile/password', [EmployeeController::class, 'updatePassword'])->name('my.password.update');
+
+    // Employee Self‑Service Attendance (log/edit/delete own attendance)
+    Route::post('/my-attendance', [EmployeeController::class, 'storeSelfAttendance'])->name('my.attendance.store');
+    Route::put('/my-attendance/{attendance}', [EmployeeController::class, 'updateSelfAttendance'])->name('my.attendance.update');
+    Route::delete('/my-attendance/{attendance}', [EmployeeController::class, 'destroySelfAttendance'])->name('my.attendance.destroy');
 
     // ==================== NOTIFICATION API (for bell dropdown - AJAX) ====================
     Route::get('/notifications/api', function () {
@@ -78,6 +84,7 @@ Route::middleware(['auth'])->group(function () {
         Route::post('reports/payroll-summary', [ReportController::class, 'payrollSummary'])->name('reports.payroll-summary');
         Route::post('reports/employee-earnings', [ReportController::class, 'employeeEarnings'])->name('reports.employee-earnings');
         Route::post('reports/deductions', [ReportController::class, 'deductionsReport'])->name('reports.deductions');
+        Route::post('/reports/bank-export', [ReportController::class, 'bankFileExport'])->name('reports.bank-export');
 
         // Settings
         Route::get('settings', [SettingController::class, 'index'])->name('settings.index');
@@ -101,6 +108,12 @@ Route::middleware(['auth'])->group(function () {
 
         // Audit Logs
         Route::get('audit-logs', [AuditLogController::class, 'index'])->name('audit-logs.index');
+
+        // Payroll adjustments
+        Route::post('/payroll/adjustments', [PayrollController::class, 'storeAdjustment'])->name('payroll.adjustments.store');
+        Route::put('/payroll/adjustments/{adjustment}', [PayrollController::class, 'updateAdjustment'])->name('payroll.adjustments.update');
+        Route::delete('/payroll/adjustments/{adjustment}', [PayrollController::class, 'destroyAdjustment'])->name('payroll.adjustments.destroy');
+        
     });
 });
 

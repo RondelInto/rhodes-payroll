@@ -1,7 +1,10 @@
 <x-app-layout>
     <div class="max-w-2xl mx-auto">
         <h1 class="text-2xl font-bold text-gray-900 dark:text-white mb-6">My Profile</h1>
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+        
+        {{-- Profile Information Update --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6 mb-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Profile Information</h2>
             <form method="POST" action="{{ route('my.profile.update') }}">
                 @csrf
                 @method('PUT')
@@ -15,7 +18,7 @@
                         <input type="email" value="{{ $employee->email }}" disabled class="input-field bg-gray-100 dark:bg-gray-700">
                     </div>
                     <div>
-                        <label class="input-label">Phone <span class="text-red-500">*</span></label>
+                        <label class="input-label">Phone</label>
                         <input type="text" name="phone" value="{{ $employee->phone }}" required class="input-field">
                     </div>
                     <div>
@@ -35,6 +38,36 @@
                         <input type="text" name="zip_code" value="{{ $employee->zip_code }}" class="input-field">
                     </div>
                     <button type="submit" class="btn-primary w-full">Update Profile</button>
+                </div>
+            </form>
+        </div>
+
+        {{-- Change Password Section --}}
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-200 dark:border-gray-700 p-6">
+            <h2 class="text-lg font-semibold text-gray-900 dark:text-white mb-4">Change Password</h2>
+            <form method="POST" action="{{ route('my.password.update') }}">
+                @csrf
+                @method('PUT')
+                <div class="space-y-4">
+                    <div>
+                        <label class="input-label">Current Password</label>
+                        <input type="password" name="current_password" required class="input-field">
+                        @error('current_password')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="input-label">New Password</label>
+                        <input type="password" name="password" required class="input-field">
+                        @error('password')
+                            <p class="text-red-500 text-xs mt-1">{{ $message }}</p>
+                        @enderror
+                    </div>
+                    <div>
+                        <label class="input-label">Confirm New Password</label>
+                        <input type="password" name="password_confirmation" required class="input-field">
+                    </div>
+                    <button type="submit" class="btn-primary w-full">Update Password</button>
                 </div>
             </form>
         </div>

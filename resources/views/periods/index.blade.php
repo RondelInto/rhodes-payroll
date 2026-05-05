@@ -60,11 +60,11 @@
         </div>
     </div>
 
-    {{-- Modal for Create/Edit --}}
+    {{-- Modal for Create/Edit – styled like Add Employee modal --}}
     <div id="periodModal" class="fixed inset-0 bg-black/50 backdrop-blur-sm hidden items-center justify-center z-50 overflow-y-auto">
-        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-md m-4">
-            <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
-                <h3 id="modalTitle" class="text-lg font-bold text-gray-900 dark:text-white">Add Payroll Period</h3>
+        <div class="bg-white dark:bg-gray-800 rounded-xl shadow-2xl w-full max-w-3xl m-4">
+            <div class="flex justify-between items-center px-6 py-4 border-b border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-t-xl">
+                <h3 id="modalTitle" class="text-xl font-bold text-gray-900 dark:text-white">Add Payroll Period</h3>
                 <button onclick="closeModal()" class="text-gray-400 hover:text-gray-600 dark:hover:text-gray-300">
                     <i class="fas fa-times"></i>
                 </button>
@@ -72,62 +72,73 @@
             <form id="periodForm" method="POST" action="{{ route('periods.store') }}">
                 @csrf
                 <input type="hidden" name="_method" id="methodField" value="POST">
-                <div class="p-6 space-y-4">
-                    <div>
-                        <label class="input-label">Name <span class="text-red-500">*</span></label>
-                        <input type="text" name="name" id="name" required class="input-field" readonly style="background-color:#f3f4f6;">
-                    </div>
+                <div class="p-6 max-h-96 overflow-y-auto">
+                    <div class="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {{-- Period Name (auto-generated, read-only) --}}
+                        <div class="col-span-2">
+                            <label class="input-label">Period Name <span class="text-red-500">*</span></label>
+                            <input type="text" name="name" id="name" required class="input-field w-full bg-gray-100 dark:bg-gray-700" readonly>
+                        </div>
 
-                    <div>
-                        <label class="input-label">Select Month/Year</label>
-                        <input type="month" id="monthPicker" class="input-field">
-                    </div>
+                        {{-- Month/Year picker --}}
+                        <div>
+                            <label class="input-label">Select Month/Year <span class="text-red-500">*</span></label>
+                            <input type="month" id="monthPicker" class="input-field w-full">
+                        </div>
 
-                    <div>
-                        <label class="input-label">Period Type <span class="text-red-500">*</span></label>
-                        <select name="period_type" id="period_type" required class="input-field">
-                            <option value="weekly">Weekly</option>
-                            <option value="semi-monthly">Semi-monthly</option>
-                            <option value="monthly">Monthly</option>
-                        </select>
-                    </div>
+                        {{-- Period Type --}}
+                        <div>
+                            <label class="input-label">Period Type <span class="text-red-500">*</span></label>
+                            <select name="period_type" id="period_type" required class="input-field w-full">
+                                <option value="weekly">Weekly</option>
+                                <option value="semi-monthly">Semi-monthly</option>
+                                <option value="monthly">Monthly</option>
+                            </select>
+                        </div>
 
-                    <div id="halfSelector" style="display: none;">
-                        <label class="input-label">Half <span class="text-red-500">*</span></label>
-                        <select id="half" class="input-field">
-                            <option value="first">First Half (1st–15th)</option>
-                            <option value="second">Second Half (16th–last day)</option>
-                        </select>
-                    </div>
+                        {{-- Half selector (semi-monthly only) --}}
+                        <div id="halfSelector" style="display: none;">
+                            <label class="input-label">Half <span class="text-red-500">*</span></label>
+                            <select id="half" class="input-field w-full">
+                                <option value="first">First Half (1st–15th)</option>
+                                <option value="second">Second Half (16th–last day)</option>
+                            </select>
+                        </div>
 
-                    {{-- For weekly: week start date picker --}}
-                    <div id="weekStartSelector" style="display: none;">
-                        <label class="input-label">Week Start Date <span class="text-red-500">*</span></label>
-                        <input type="date" id="weekStart" class="input-field">
-                    </div>
+                        {{-- Week start date (weekly only) --}}
+                        <div id="weekStartSelector" style="display: none;">
+                            <label class="input-label">Week Start Date <span class="text-red-500">*</span></label>
+                            <input type="date" id="weekStart" class="input-field w-full">
+                        </div>
 
-                    <div>
-                        <label class="input-label">Start Date <span class="text-red-500">*</span></label>
-                        <input type="date" name="start_date" id="start_date" required class="input-field" readonly>
-                    </div>
-                    <div>
-                        <label class="input-label">End Date <span class="text-red-500">*</span></label>
-                        <input type="date" name="end_date" id="end_date" required class="input-field" readonly>
-                    </div>
-                    <div>
-                        <label class="input-label">Pay Date <span class="text-red-500">*</span></label>
-                        <input type="date" name="pay_date" id="pay_date" required class="input-field">
-                    </div>
-                    <div>
-                        <label class="input-label">Status <span class="text-red-500">*</span></label>
-                        <select name="status" id="status" required class="input-field">
-                            <option value="draft">Draft</option>
-                            <option value="processed">Processed</option>
-                            <option value="paid">Paid</option>
-                        </select>
+                        {{-- Date fields (start, end, pay) – three columns on desktop --}}
+                        <div class="grid grid-cols-1 md:grid-cols-3 gap-4 col-span-2">
+                            <div>
+                                <label class="input-label">Start Date <span class="text-red-500">*</span></label>
+                                <input type="date" name="start_date" id="start_date" required class="input-field w-full bg-gray-100 dark:bg-gray-700" readonly>
+                            </div>
+                            <div>
+                                <label class="input-label">End Date <span class="text-red-500">*</span></label>
+                                <input type="date" name="end_date" id="end_date" required class="input-field w-full bg-gray-100 dark:bg-gray-700" readonly>
+                            </div>
+                            <div>
+                                <label class="input-label">Pay Date <span class="text-red-500">*</span></label>
+                                <input type="date" name="pay_date" id="pay_date" required class="input-field w-full">
+                            </div>
+                        </div>
+
+                        {{-- Status --}}
+                        <div class="col-span-2">
+                            <label class="input-label">Status <span class="text-red-500">*</span></label>
+                            <select name="status" id="status" required class="input-field w-full">
+                                <option value="draft">Draft</option>
+                                <option value="processed">Processed</option>
+                                <option value="paid">Paid</option>
+                            </select>
+                        </div>
                     </div>
                 </div>
-                <div class="flex justify-end space-x-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50">
+                <div class="flex justify-end space-x-3 px-6 py-4 border-t border-gray-200 dark:border-gray-700 bg-gray-50 dark:bg-gray-800/50 rounded-b-xl">
                     <button type="button" onclick="closeModal()" class="btn-secondary">Cancel</button>
                     <button type="submit" class="btn-primary">Save Period</button>
                 </div>
@@ -189,24 +200,18 @@
             document.getElementById('pay_date').value = period.pay_date.split(' ')[0];
             document.getElementById('status').value = period.status;
 
-            // Set month picker from start_date
             const start = new Date(period.start_date);
             const monthYear = `${start.getFullYear()}-${String(start.getMonth()+1).padStart(2,'0')}`;
             document.getElementById('monthPicker').value = monthYear;
 
-            // Set half for semi-monthly
             if (period.period_type === 'semi-monthly') {
                 const day = new Date(period.start_date).getDate();
                 document.getElementById('half').value = (day === 1) ? 'first' : 'second';
             }
-
-            // For weekly, set weekStart
             if (period.period_type === 'weekly') {
                 document.getElementById('weekStart').value = period.start_date.split(' ')[0];
             }
-
             toggleExtraFields();
-            // Do not autoFillDates during edit – preserve original dates
         }
 
         function toggleExtraFields() {
@@ -225,9 +230,9 @@
         }
 
         function adjustPayDate(date) {
-            const day = date.getDay(); // 0 = Sunday, 6 = Saturday
-            if (day === 6) date.setDate(date.getDate() - 1); // Saturday → Friday
-            if (day === 0) date.setDate(date.getDate() - 2); // Sunday → Friday
+            const day = date.getDay();
+            if (day === 6) date.setDate(date.getDate() - 1);
+            if (day === 0) date.setDate(date.getDate() - 2);
             return date;
         }
 
@@ -242,11 +247,11 @@
             let startDate = null;
             let endDate = null;
             let payDate = null;
-            const payDateOffset = 5; // days after end date
+            const payDateOffset = 5;
 
             if (periodType === 'monthly') {
                 startDate = new Date(year, month - 1, 1);
-                endDate = new Date(year, month, 0); // last day of month
+                endDate = new Date(year, month, 0);
                 payDate = new Date(endDate);
                 payDate.setDate(endDate.getDate() + payDateOffset);
                 payDate = adjustPayDate(payDate);
@@ -267,7 +272,6 @@
             else if (periodType === 'weekly') {
                 let weekStart = document.getElementById('weekStart').value;
                 if (!weekStart) {
-                    // Default to first day of month
                     weekStart = formatLocalDate(new Date(year, month - 1, 1));
                     document.getElementById('weekStart').value = weekStart;
                 }
@@ -280,16 +284,13 @@
             }
 
             if (startDate && endDate) {
-                // Validation: end date cannot be before start date
                 if (endDate < startDate) {
                     alert('End date cannot be before start date. Please adjust the week start date.');
                     return;
                 }
                 document.getElementById('start_date').value = formatLocalDate(startDate);
                 document.getElementById('end_date').value = formatLocalDate(endDate);
-                // Auto-generate period name
-                const name = `${formatLocalDate(startDate)} - ${formatLocalDate(endDate)}`;
-                document.getElementById('name').value = name;
+                document.getElementById('name').value = `${formatLocalDate(startDate)} - ${formatLocalDate(endDate)}`;
             }
             if (payDate) {
                 document.getElementById('pay_date').value = formatLocalDate(payDate);

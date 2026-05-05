@@ -15,12 +15,31 @@ class DashboardController extends Controller
         $totalDepartments = Department::count();
         $pendingPayroll = PayrollPeriod::where('status', 'draft')->count();
         $monthlyPayrollTotal = PayrollTransaction::whereMonth('created_at', now()->month)->sum('net_pay');
-        
+
         $departmentDistribution = Department::withCount('employees')->get()
             ->map(fn($d) => ['name' => $d->name, 'count' => $d->employees_count]);
-        
-        $recentTransactions = PayrollTransaction::with(['employee', 'period'])->latest()->take(5)->get();
-        
-        return view('dashboard', compact('totalEmployees', 'totalDepartments', 'pendingPayroll', 'monthlyPayrollTotal', 'departmentDistribution', 'recentTransactions'));
+
+        // ✅ Get the most recent payroll period (latest by id or end_date)
+        $latestPeriod = PayrollPeriod::latest('id')->first();
+
+        if ($latestPeriod) {
+            // ✅ Fetch all transactions for the latest period, ordered by employee name
+            $recentTransactions = PayrollTransaction::with(['employee', 'period'])
+                ->where('period_id', $latestPeriod->id)
+                ->whereHas('employee')
+                ->get()
+                ->sortBy(fn($t) => $t->employee?->first_name . ' ' . $t->employee?->last_name);
+        } else {
+            $recentTransactions = collect();
+        }
+
+        return view('dashboard', compact(
+            'totalEmployees',
+            'totalDepartments',
+            'pendingPayroll',
+            'monthlyPayrollTotal',
+            'departmentDistribution',
+            'recentTransactions'
+        ));
     }
 }

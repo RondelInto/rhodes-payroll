@@ -1,10 +1,10 @@
 <x-app-layout>
     <div class="space-y-6">
-        <h1 class="text-2xl font-bold">Reports</h1>
+        <h1 class="text-2xl font-bold text-gray-900 dark:text-white">Reports</h1>
 
         <div class="grid grid-cols-1 md:grid-cols-2 gap-6">
             {{-- Payroll Summary Report --}}
-            <div class="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <h3 class="text-lg font-semibold mb-4"><i class="fas fa-chart-line mr-2"></i> Payroll Summary</h3>
                 <form action="{{ route('reports.payroll-summary') }}" method="POST">
                     @csrf
@@ -30,7 +30,7 @@
             </div>
 
             {{-- Employee Earnings Report --}}
-            <div class="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <h3 class="text-lg font-semibold mb-4"><i class="fas fa-user mr-2"></i> Employee Earnings</h3>
                 <form action="{{ route('reports.employee-earnings') }}" method="POST">
                     @csrf
@@ -56,7 +56,7 @@
             </div>
 
             {{-- Deductions Report --}}
-            <div class="bg-white dark:bg-slate-800 rounded-lg shadow p-6">
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
                 <h3 class="text-lg font-semibold mb-4"><i class="fas fa-calculator mr-2"></i> Deductions Report</h3>
                 <form action="{{ route('reports.deductions') }}" method="POST">
                     @csrf
@@ -69,6 +69,24 @@
                             </select>
                         </div>
                         <button type="submit" class="btn-primary w-full">Export CSV</button>
+                    </div>
+                </form>
+            </div>
+
+            {{-- Bank File Export --}}
+            <div class="bg-white dark:bg-gray-800 rounded-lg shadow p-6">
+                <h3 class="text-lg font-semibold mb-4"><i class="fas fa-university mr-2"></i> Bank File Export</h3>
+                <form action="{{ route('reports.bank-export') }}" method="POST">
+                    @csrf
+                    <div class="space-y-3">
+                        <div><label>Payroll Period *</label>
+                            <select name="period_id" required class="input-field w-full">
+                                @foreach($periods as $period)
+                                    <option value="{{ $period->id }}">{{ $period->name }}</option>
+                                @endforeach
+                            </select>
+                        </div>
+                        <button type="submit" class="btn-primary w-full">Download Bank CSV</button>
                     </div>
                 </form>
             </div>

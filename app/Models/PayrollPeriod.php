@@ -28,4 +28,17 @@ class PayrollPeriod extends Model
     {
         return $this->hasMany(Attendance::class, 'period_id');
     }
+
+    public function adjustments(): HasMany
+    {
+        return $this->hasMany(PayrollAdjustment::class, 'period_id');
+    }
+
+    /**
+     * Check if the payroll period is already processed (locked).
+     */
+    public function isProcessed(): bool
+    {
+        return $this->status === 'processed';
+    }
 }

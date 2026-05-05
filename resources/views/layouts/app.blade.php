@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="en" x-data="{ sidebarOpen: true, darkMode: false }" x-init="
-    if (localStorage.getItem('darkMode') === 'true') { darkMode = true; document.documentElement.classList.add('dark'); }
+    // This will sync the toggle with localStorage, but the class is already set by script below
+    if (localStorage.getItem('darkMode') === 'true') { darkMode = true; }
     $watch('darkMode', val => { localStorage.setItem('darkMode', val); val ? document.documentElement.classList.add('dark') : document.documentElement.classList.remove('dark'); })
 ">
 <head>
@@ -8,6 +9,26 @@
     <meta name="viewport" content="width=device-width, initial-scale=1">
     <meta name="csrf-token" content="{{ csrf_token() }}">
     <title>Rhodes Payroll</title>
+
+    {{-- ⚡ PREVENT WHITE FLASH: Apply dark mode synchronously before any render --}}
+    <script>
+        (function() {
+            const stored = localStorage.getItem('darkMode');
+            if (stored !== null) {
+                if (stored === 'true') {
+                    document.documentElement.classList.add('dark');
+                } else {
+                    document.documentElement.classList.remove('dark');
+                }
+            } else if (window.matchMedia('(prefers-color-scheme: dark)').matches) {
+                document.documentElement.classList.add('dark');
+                localStorage.setItem('darkMode', 'true');
+            } else {
+                document.documentElement.classList.remove('dark');
+            }
+        })();
+    </script>
+
     @vite(['resources/css/app.css', 'resources/js/app.js'])
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <link href="https://fonts.googleapis.com/css2?family=Inter:opsz,wght@14..32,400;14..32,500;14..32,600;14..32,700&display=swap" rel="stylesheet">
@@ -125,62 +146,100 @@
     <script src="https://cdn.jsdelivr.net/npm/fullcalendar@5.11.3/main.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
 
+    @stack('scripts')
+
     <script>
         function notificationComponent() {
-    return {
-        dropdownOpen: false,
-        unreadCount: 0,
-        notifications: [],
-        init() {
-            this.fetchNotifications();
-            setInterval(() => this.fetchNotifications(), 30000);
-        },
-        toggleDropdown() {
-            this.dropdownOpen = !this.dropdownOpen;
-            if (this.dropdownOpen) {
-                this.fetchNotifications();
+            return {
+                dropdownOpen: false,
+                unreadCount: 0,
+                notifications: [],
+                init() {
+                    this.fetchNotifications();
+                    setInterval(() => this.fetchNotifications(), 30000);
+                },
+                toggleDropdown() {
+                    this.dropdownOpen = !this.dropdownOpen;
+                    if (this.dropdownOpen) {
+                        this.fetchNotifications();
+                    }
+                },
+                fetchNotifications() {
+                    fetch('{{ url("/notifications/api") }}', {
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                    })
+                    .then(res => res.json())
+                    .then(data => {
+                        this.notifications = data;
+                        this.unreadCount = data.length;
+                    });
+                },
+                markAsRead(id, url) {
+                    fetch(`/notifications/api/${id}/read`, {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                    }).then(() => {
+                        this.fetchNotifications();
+                        if (url) window.location.href = url;
+                    });
+                },
+                markAllAsRead() {
+                    fetch('{{ url("/notifications/api/read-all") }}', {
+                        method: 'POST',
+                        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+                    }).then(() => this.fetchNotifications());
+                },
+                formatDate(dateString) {
+                    const date = new Date(dateString);
+                    const now = new Date();
+                    const diffMs = now - date;
+                    const diffMins = Math.floor(diffMs / 60000);
+                    const diffHours = Math.floor(diffMs / 3600000);
+                    const diffDays = Math.floor(diffMs / 86400000);
+                    if (diffMins < 1) return 'Just now';
+                    if (diffMins < 60) return `${diffMins} minutes ago`;
+                    if (diffHours < 24) return `${diffHours} hours ago`;
+                    return `${diffDays} days ago`;
+                }
             }
-        },
-        fetchNotifications() {
-            fetch('{{ url("/notifications/api") }}', {
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-            })
-            .then(res => res.json())
-            .then(data => {
-                this.notifications = data;
-                this.unreadCount = data.length;
-            });
-        },
-        markAsRead(id, url) {
-            fetch(`/notifications/api/${id}/read`, {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-            }).then(() => {
-                this.fetchNotifications();
-                if (url) window.location.href = url;
-            });
-        },
-        markAllAsRead() {
-            fetch('{{ url("/notifications/api/read-all") }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-            }).then(() => this.fetchNotifications());
-        },
-        formatDate(dateString) {
-            const date = new Date(dateString);
-            const now = new Date();
-            const diffMs = now - date;
-            const diffMins = Math.floor(diffMs / 60000);
-            const diffHours = Math.floor(diffMs / 3600000);
-            const diffDays = Math.floor(diffMs / 86400000);
-            if (diffMins < 1) return 'Just now';
-            if (diffMins < 60) return `${diffMins} minutes ago`;
-            if (diffHours < 24) return `${diffHours} hours ago`;
-            return `${diffDays} days ago`;
         }
-    }
-}
+
+        // ---------- DESKTOP NOTIFICATIONS (NO ALERT FALLBACK) ----------
+        if (window.Notification && Notification.permission !== 'granted') {
+            Notification.requestPermission();
+        }
+
+        function showNotification(title, message) {
+            if (window.Notification && Notification.permission === 'granted') {
+                new Notification(title, {
+                    body: message,
+                    icon: '/favicon.ico',
+                    silent: false
+                });
+            } else if (window.Notification && Notification.permission !== 'denied') {
+                Notification.requestPermission().then(perm => {
+                    if (perm === 'granted') {
+                        new Notification(title, {
+                            body: message,
+                            icon: '/favicon.ico'
+                        });
+                    }
+                });
+            }
+            // Removed alert() – the inline red banner already shows the message
+        }
+
+        document.addEventListener('DOMContentLoaded', function() {
+            @if(session('error'))
+                showNotification('⚠️ Attendance Error', "{{ session('error') }}");
+            @endif
+            @if(session('success'))
+                // Uncomment if you want success notifications
+                // showNotification('✅ Success', "{{ session('success') }}");
+            @endif
+        });
     </script>
+
     <style>
         [x-cloak] { display: none !important; }
     </style>

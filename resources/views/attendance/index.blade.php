@@ -11,7 +11,7 @@
                     </select>
                 </form>
                 <button onclick="openImportModal()" class="btn-secondary"><i class="fas fa-upload"></i> Import CSV</button>
-                <button onclick="saveAll()" class="btn-primary"><i class="fas fa-save"></i> Save All</button>
+                <button onclick="saveAll()" class="btn-primary" id="saveAllBtn"><i class="fas fa-save"></i> Save All</button>
             </div>
         </div>
 
@@ -117,7 +117,7 @@
                                                     </table>
                                                 </div>
                                                 <div class="mt-3 text-right">
-                                                    <button type="submit" class="btn-secondary text-sm">Save this employee</button>
+                                                    <button type="submit" class="btn-secondary text-sm save-employee-btn">Save this employee</button>
                                                 </div>
                                             </form>
                                         </div>
@@ -184,28 +184,84 @@
             return `${hours}:${minutes}`;
         }
 
-        function saveEmployeeAttendance(employeeId) {
+        async function saveEmployeeAttendance(employeeId) {
             const form = document.querySelector(`.attendance-form[data-employee="${employeeId}"]`);
             if (!form) return;
             const formData = new FormData(form);
-            fetch('{{ route("attendance.store") }}', {
-                method: 'POST',
-                headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' },
-                body: formData
-            }).then(response => response.json()).then(data => {
-                if (data.success) location.reload();
-                else alert('Error saving attendance.');
-            }).catch(() => alert('Error saving attendance.'));
+            try {
+                const response = await fetch('{{ route("attendance.store") }}', {
+                    method: 'POST',
+                    headers: {
+                        'X-CSRF-TOKEN': '{{ csrf_token() }}',
+                        'X-Requested-With': 'XMLHttpRequest',
+                        'Accept': 'application/json'
+                    },
+                    body: formData
+                });
+                if (!response.ok) {
+                    const errorData = await response.json();
+                    throw new Error(errorData.error || 'Server error');
+                }
+                const data = await response.json();
+                if (data.success) {
+                    return true;
+                } else {
+                    throw new Error(data.error || 'Unknown error');
+                }
+            } catch (error) {
+                console.error(`Error saving employee ${employeeId}:`, error);
+                alert(`Error saving attendance for employee: ${error.message}`);
+                return false;
+            }
         }
 
-        function saveAll() {
-            document.querySelectorAll('.attendance-form').forEach(form => {
+        async function saveAll() {
+            const saveAllBtn = document.getElementById('saveAllBtn');
+            if (saveAllBtn) saveAllBtn.disabled = true;
+
+            const forms = document.querySelectorAll('.attendance-form');
+            let successCount = 0;
+            let failCount = 0;
+
+            for (const form of forms) {
                 const employeeId = form.dataset.employee;
-                saveEmployeeAttendance(employeeId);
-            });
+                const success = await saveEmployeeAttendance(employeeId);
+                if (success) {
+                    successCount++;
+                } else {
+                    failCount++;
+                }
+            }
+
+            if (saveAllBtn) saveAllBtn.disabled = false;
+
+            if (failCount > 0) {
+                alert(`Saved ${successCount} employees, failed ${failCount}. Check console for details.`);
+            } else if (successCount > 0) {
+                location.reload();
+            } else {
+                alert('No attendance records to save.');
+            }
         }
 
         document.addEventListener('DOMContentLoaded', function() {
+            // Individual "Save this employee" buttons
+            document.querySelectorAll('.save-employee-btn').forEach(btn => {
+                btn.addEventListener('click', async (e) => {
+                    e.preventDefault();
+                    const form = btn.closest('.attendance-form');
+                    if (!form) return;
+                    const employeeId = form.dataset.employee;
+                    btn.disabled = true;
+                    const success = await saveEmployeeAttendance(employeeId);
+                    btn.disabled = false;
+                    if (success) {
+                        location.reload();
+                    }
+                });
+            });
+
+            // "Now" and "Clear" buttons
             document.body.addEventListener('click', function(e) {
                 if (e.target.classList.contains('now-time-in')) {
                     const timeInput = e.target.closest('td').querySelector('input[type="time"]');
