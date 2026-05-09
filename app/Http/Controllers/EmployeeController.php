@@ -416,6 +416,6 @@ class EmployeeController extends Controller
 
         Log::info('User account created for employee: ' . $employee->email . ' with temporary password: ' . $temporaryPassword);
 
-        $user->notify(new NewEmployeeAccountNotification($temporaryPassword));
+        //$user->notify(new NewEmployeeAccountNotification($temporaryPassword));
     }
 }
